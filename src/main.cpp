@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -21,88 +22,25 @@ int reading;
 long timer = 0;
 long debounceTimer = 1000;
 
-void wifiSetup()
+void handleWebRequests()
 {
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to: ");
-  Serial.println(WIFI_SSID);
+  String message = "File Not Detected\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-
-  while (WiFi.status() != WL_CONNECTED)
+  for (uint8_t i = 0; i < server.args(); i++)
   {
-    delay(500);
-    Serial.print(".");
+    message += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
   }
 
-  Serial.println("");
-  Serial.print("WiFi connected.");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-}
+  server.send(404, "text/plain", message);
 
-void switchSetup()
-{
-  // Switch initialization
-  pinMode(PIN_SWITCH, INPUT);
-
-  delay(100);
-
-  // get current state on start
-  //currentState = digitalRead(PIN_SWITCH);
-  currentState = SWITCH_OPEN;
-  previousState = currentState == SWITCH_OPEN ? SWITCH_CLOSE : SWITCH_OPEN;
-
-  Serial.print("Current state is: ");
-  Serial.println(currentState);
-}
-
-void setupWebserver()
-{
-  if (MDNS.begin("Door Station"))
-  {
-    Serial.println("MDNS responder started");
-  }
-
-  server.serveStatic("/", SPIFFS, "/www/");
-  //server.setDefaultFile("index.html");
-
-  //  server.on("/", handleRoot);
-
-  server.on("/state", []() {
-    String state = currentState == SWITCH_OPEN ? "on" : "off";
-
-    Serial.print("Handle request: ");
-    Serial.println("/state");
-
-    server.send(200, "text/plain", state);
-  });
-
-  server.on("/switch/alle-lichter/on", []() {
-    Serial.print("Handle request: ");
-    Serial.println("/switch/alle-lichter/on");
-
-    server.send(200, "text/plain", "on");
-
-    switchDevice(true, "alle-lichter");
-  });
-
-  server.on("/switch/alle-lichter/off", []() {
-    Serial.print("Handle request: ");
-    Serial.println("/switch/alle-lichter/off");
-
-    server.send(200, "text/plain", "off");
-
-    switchDevice(false, "alle-lichter");
-  });
-
-  server.onNotFound(handleWebRequests);
-
-  server.begin();
-
-  Serial.println("HTTP server started");
+  Serial.println(message);
 }
 
 void switchDevice(bool enable, const char *device)
@@ -225,6 +163,87 @@ void handleSwitch()
   }
 }
 
+void wifiSetup()
+{
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to: ");
+  Serial.println(WIFI_SSID);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.print("WiFi connected.");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void switchSetup()
+{
+  // Switch initialization
+  pinMode(PIN_SWITCH, INPUT);
+
+  delay(100);
+
+  // get current state on start
+  //currentState = digitalRead(PIN_SWITCH);
+  currentState = SWITCH_OPEN;
+  previousState = currentState == SWITCH_OPEN ? SWITCH_CLOSE : SWITCH_OPEN;
+
+  Serial.print("Current state is: ");
+  Serial.println(currentState);
+}
+
+void setupWebserver()
+{
+  if (MDNS.begin("Door Station"))
+  {
+    Serial.println("MDNS responder started");
+  }
+
+  server.serveStatic("/", SPIFFS, "/www/");
+
+  server.on("/state", []() {
+    String state = currentState == SWITCH_OPEN ? "on" : "off";
+
+    Serial.print("Handle request: ");
+    Serial.println("/state");
+
+    server.send(200, "text/plain", state);
+  });
+
+  server.on("/switch/alle-lichter/on", []() {
+    Serial.print("Handle request: ");
+    Serial.println("/switch/alle-lichter/on");
+
+    server.send(200, "text/plain", "on");
+
+    switchDevice(true, "alle-lichter");
+  });
+
+  server.on("/switch/alle-lichter/off", []() {
+    Serial.print("Handle request: ");
+    Serial.println("/switch/alle-lichter/off");
+
+    server.send(200, "text/plain", "off");
+
+    switchDevice(false, "alle-lichter");
+  });
+
+  server.onNotFound(handleWebRequests);
+
+  server.begin();
+
+  Serial.println("HTTP server started");
+}
+
 bool loadFromSpiffs(String path)
 {
   String dataType = "text/plain";
@@ -271,35 +290,6 @@ bool loadFromSpiffs(String path)
   dataFile.close();
 
   return true;
-}
-
-void handleRoot()
-{
-  server.sendHeader("Location", "/index.html", true); //Redirect to our html web page
-  server.send(302, "text/plain", "");
-}
-
-void handleWebRequests()
-{
-  //  if (loadFromSpiffs(server.uri())) return;
-
-  String message = "File Not Detected\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += (server.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-
-  for (uint8_t i = 0; i < server.args(); i++)
-  {
-    message += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
-  }
-
-  server.send(404, "text/plain", message);
-
-  Serial.println(message);
 }
 
 void setupOTA()
