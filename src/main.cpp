@@ -38,6 +38,8 @@ void handleWebRequests()
     message += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
   }
 
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+
   server.send(404, "text/plain", message);
 
   Serial.println(message);
