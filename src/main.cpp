@@ -22,7 +22,7 @@ int reading;
 long timer = 0;
 long debounceTimer = 1000;
 
-void handleWebRequests()
+void handleWebRequests404()
 {
   String message = "File Not Detected\n\n";
   message += "URI: ";
@@ -39,7 +39,6 @@ void handleWebRequests()
   }
 
   server.sendHeader("Access-Control-Allow-Origin", "*");
-
   server.send(404, "text/plain", message);
 
   Serial.println(message);
@@ -120,14 +119,6 @@ void switchDevices()
   doSwitch = false;
 
   switchDevice(switchMode, "alle-lichter");
-
-  //  Serial.println("+++++++++++++++++++++++++++++++++++++");
-  //  Serial.print("Switch Mode: ");
-  //  Serial.println(switchMode);
-  //
-  //  for (int i = 0; i < NUM_DEVICES; i++) {
-  //    switchDevice(switchMode, devices[i]);
-  //  }
 }
 
 void handleSwitch()
@@ -210,39 +201,22 @@ void setupWebserver()
     Serial.println("MDNS responder started");
   }
 
-  server.serveStatic("/", SPIFFS, "/www/");
+  // Overview
+  server.serveStatic("/", SPIFFS, "/www/index.html");
+  server.serveStatic("/index.html", SPIFFS, "/www/index.html");
+  server.serveStatic("/styles.css", SPIFFS, "/www/styles.css");
+  server.serveStatic("/scripts.js", SPIFFS, "/www/scripts.js");
 
+  // Debug
   server.on("/state", []() {
-    String state = currentState == SWITCH_OPEN ? "on" : "off";
-
-    Serial.print("Handle request: ");
-    Serial.println("/state");
-
-    server.send(200, "text/plain", state);
+    server.send(200, "text/plain", (const char *)SWITCH_OPEN);
   });
 
-  server.on("/switch/alle-lichter/on", []() {
-    Serial.print("Handle request: ");
-    Serial.println("/switch/alle-lichter/on");
+  // 404
+  server.onNotFound(handleWebRequests404);
 
-    server.send(200, "text/plain", "on");
-
-    switchDevice(true, "alle-lichter");
-  });
-
-  server.on("/switch/alle-lichter/off", []() {
-    Serial.print("Handle request: ");
-    Serial.println("/switch/alle-lichter/off");
-
-    server.send(200, "text/plain", "off");
-
-    switchDevice(false, "alle-lichter");
-  });
-
-  server.onNotFound(handleWebRequests);
-
+  // Start server
   server.begin();
-
   Serial.println("HTTP server started");
 }
 
@@ -340,15 +314,28 @@ void setup()
   Serial.begin(115200);
   delay(10);
 
+  // WiFi
   wifiSetup();
+
+  // OTA
   setupOTA();
+
+  // Switch
   switchSetup();
+
+  // Webserver
+  SPIFFS.begin();
   setupWebserver();
 }
 
 void loop()
 {
+  // OTA
   ArduinoOTA.handle();
+
+  // Webserver
   server.handleClient();
+
+  // Switch
   handleSwitch();
 }
