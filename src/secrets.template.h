@@ -14,10 +14,10 @@
  * 1: Wohnzimmerlicht (wohnzimmerlicht)
  * 2: Sofa & Regal (sofalicht)
  * 3: Lichterkette (lichterkette)
- * 4: Türlicht (tuerlicht)
+ * 4: Tischregal (tischregal)
  * 5: Galerie (galerielicht)
  */
-//const char *devices[] = {"tuerlicht", "galerielicht", "lichterkette", "sofalicht"};
+//const char *devices[] = {"tischregal", "galerielicht", "lichterkette", "sofalicht"};
 const char *devices[] = {"alle-lichter"};
 //const char* devices[] = {"sofalicht", "lichterkette", "galerielicht"};
-//const char* devices[] = {"tuerlicht", "galerielicht"};
+//const char* devices[] = {"tischregal", "galerielicht"};
