@@ -2,7 +2,9 @@
 
 Toggle lights with a Bändel. Requires [Connect Alexa to RC Switches](https://github.com/tilmanjusten/alexa-rc-switch).
 
-<img src="docs/img/screenshot.png" alt="Screenshot Webinterface" width="200px">
+<img src="docs/img/baendelschalter.jpg" alt="Screenshot Webinterface">
+
+<img src="docs/img/screenshot.png" alt="Screenshot Webinterface" height="320px">
 
 ## Features
 
