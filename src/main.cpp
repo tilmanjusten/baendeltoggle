@@ -12,15 +12,18 @@
 #define SWITCH_OPEN HIGH
 #define SWITCH_CLOSE LOW
 #define NUM_DEVICES (sizeof(devices) / sizeof(int))
+#define SWITCH_PERIOD 1000
+#define DEBOUNCE_PERIOD 50
 
 ESP8266WebServer server(HTTP_PORT);
 
 bool doSwitch = false;
 int currentState = SWITCH_OPEN;
-int previousState = SWITCH_CLOSE;
 int reading;
-long timer = 0;
-long debounceTimer = 1000;
+unsigned long timer = 0;
+unsigned long periodTimer = 0;
+unsigned long clickTimer = 0;
+int clicksCount = 0;
 
 void handleWebRequests404()
 {
@@ -112,12 +115,8 @@ void switchDevice(bool enable, const char *device)
   delay(100);
 }
 
-void switchDevices()
+void switchDevices(bool switchMode)
 {
-  bool switchMode = currentState == SWITCH_OPEN;
-
-  doSwitch = false;
-
   switchDevice(switchMode, "alle-lichter");
 }
 
@@ -125,34 +124,50 @@ void handleSwitch()
 {
   reading = digitalRead(PIN_SWITCH);
 
-  if (millis() - timer > debounceTimer && doSwitch == false)
+  if (millis() - timer > DEBOUNCE_PERIOD)
   {
+    timer = millis();
+
+    // count state changes within period
+    // two changes or more = lights off
+    // one change = lights on
+
+    // state change happens
     if (reading != currentState)
     {
-      Serial.print("Change state: ");
+      currentState = reading;
 
-      doSwitch = true;
-
-      if (currentState == SWITCH_OPEN)
+      // start period
+      if (periodTimer == 0)
       {
-        Serial.println("Lights off!");
-        currentState = SWITCH_CLOSE;
+        periodTimer = millis();
       }
-      else
+
+      // check if within period
+      if (millis() - periodTimer <= SWITCH_PERIOD)
       {
-        Serial.println("Lights on!");
-        currentState = SWITCH_OPEN;
+        // increase clicks counter
+        clicksCount += 1;
       }
     }
-
-    timer = millis();
   }
 
-  previousState = reading;
-
-  if (doSwitch)
+  // check if elapsed period exists
+  if (clicksCount > 0 && millis() - periodTimer > SWITCH_PERIOD)
   {
-    switchDevices();
+    // switch lights depending on clicks count
+    if (clicksCount > 1)
+    {
+      switchDevices(false);
+    }
+    else
+    {
+      switchDevices(true);
+    }
+
+    // resets
+    clicksCount = 0;
+    periodTimer = 0;
   }
 }
 
@@ -188,7 +203,6 @@ void switchSetup()
   // get current state on start
   //currentState = digitalRead(PIN_SWITCH);
   currentState = SWITCH_OPEN;
-  previousState = currentState == SWITCH_OPEN ? SWITCH_CLOSE : SWITCH_OPEN;
 
   Serial.print("Current state is: ");
   Serial.println(currentState);
